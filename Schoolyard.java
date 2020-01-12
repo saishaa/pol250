@@ -1,7 +1,6 @@
 import java.util.*;
 
 /* N is the number of players (including the captains); always greater than 2, even
-** m is the amount strength affects elimination; greater than 0
 ** A and B are the strengths of each captain, A picks first
 ** prints out the equilibrium order in which players are picked */
 
@@ -96,7 +95,7 @@ public class Schoolyard {
 
     public static void main(String[] args) {
         Schoolyard s = new Schoolyard();
-        s.schoolyard(4, 1, 0, 1);
+        s.schoolyard(6, 3, 2);
     }
 
     // constructor for a schoolyard
@@ -104,9 +103,9 @@ public class Schoolyard {
         root = new Node(-1, true);
     }
 
-    private void schoolyard(int N, double m, int A, int B) {
+    private void schoolyard(int N, int A, int B) {
         // parameter validation
-        if (!checkParams(N, m, A, B))
+        if (!checkParams(N, A, B))
             return;
 
         // generate and initialize players array
@@ -123,8 +122,10 @@ public class Schoolyard {
         // Backwards induction
         // number of players unclaimed
         int numLeft = N - 2;
-        int[] roster = getRoster(numLeft, players, N, m, A, B, root);
+        int[] roster = getRoster(numLeft, players, N, A, B, root);
         System.out.println("Final roster:");
+        System.out.println("Team captain A: " + A);
+        System.out.println("Team captain B: " + B);
         printRoster(roster);
         // System.out.println("Final tree:");
         // StringBuilder b = new StringBuilder();
@@ -132,17 +133,13 @@ public class Schoolyard {
         // System.out.println(b);
     }
 
-    private boolean checkParams(int N, double m, int A, int B) {
+    private boolean checkParams(int N, int A, int B) {
         if (N <= 2) {
             System.out.println("N must be greater than 2");
             return false;
         }
         if (N % 2 != 0) {
             System.out.println("N must be even");
-            return false;
-        }
-        if (m <= 0) {
-            System.out.println("m must be greater than 0");
             return false;
         }
         if (A == B) {
@@ -187,7 +184,7 @@ public class Schoolyard {
 
     // returns an array of the final team roster
     // numLeft = number of players unclaimed, players = initial roster
-    private int[] getRoster(int numLeft, int[] players, int N, double m, int A, int B, Node parent) {
+    private int[] getRoster(int numLeft, int[] players, int N, int A, int B, Node parent) {
         // generate left array
         int[] left = getLeft(numLeft, players);
         Node[] leftNodes = getLeftNodes(left);
@@ -205,8 +202,10 @@ public class Schoolyard {
             int Sb = sum(TEAM_B, players);
 
             int chosen;
-            double f1 = probLoss(TEAM_A, Sa + left[0], Sb + left[1]) * probWorst(TEAM_A, N, m, A, B, Sa, left[0]);
-            double f2 = probLoss(TEAM_A, Sa + left[1], Sb + left[0]) * probWorst(TEAM_A, N, m, A, B, Sa, left[1]);
+            double f1 = probLoss(TEAM_A, Sa + left[0], Sb + left[1]) * probWorst(TEAM_A, N, A, B, players, left[0]);
+            double f2 = probLoss(TEAM_A, Sa + left[1], Sb + left[0]) * probWorst(TEAM_A, N, A, B, players, left[1]);
+            // System.out.println("F1: " + f1);
+            // System.out.println("F2: " + f2);
 
             if (Math.min(f1, f2) == f1) {
                 chosen = left[0];
@@ -239,12 +238,12 @@ public class Schoolyard {
 
                 // call the getRoster function on this players array to retrieve an array of
                 // what will be chosen subsequently
-                int[] roster = getRoster(numLeft - 1, players, N, m, A, B, parent.getChild(j));
+                int[] roster = getRoster(numLeft - 1, players, N, A, B, parent.getChild(j));
 
                 // calculate probability of elimination from final team roster
                 int Sa = sum(TEAM_A, roster);
                 int Sb = sum(TEAM_B, roster);
-                probs[j] = probLoss(TEAM_B, Sa, Sb) * probWorst(TEAM_B, N, m, A, B, roster);
+                probs[j] = probLoss(TEAM_B, Sa, Sb) * probWorst(TEAM_B, N, A, B, roster);
 
                 // unclaim all players in left
                 for (int i = 0; i < left.length; i++) {
@@ -293,12 +292,12 @@ public class Schoolyard {
 
                 // call the getRoster function on this players array to retrieve an array of
                 // what will be chosen subsequently
-                int[] roster = getRoster(numLeft - 1, players, N, m, A, B, parent.getChild(j));
+                int[] roster = getRoster(numLeft - 1, players, N, A, B, parent.getChild(j));
 
                 // calculate probability of elimination from final team roster
                 int Sa = sum(TEAM_A, roster);
                 int Sb = sum(TEAM_B, roster);
-                probs[j] = probLoss(TEAM_A, Sa, Sb) * probWorst(TEAM_A, N, m, A, B, roster);
+                probs[j] = probLoss(TEAM_A, Sa, Sb) * probWorst(TEAM_A, N, A, B, roster);
 
                 // unclaim all players in left
                 for (int i = 0; i < left.length; i++) {
@@ -407,22 +406,28 @@ public class Schoolyard {
     // calculates the probability of specified team losing team challenge
     // Sa = strength of team A, Sb = strength of team B, team = specifies team
     private double probLoss(int team, int Sa, int Sb) {
-        if (team == TEAM_A)
+        if (team == TEAM_A) {
+            // System.out.println("Team A loss prob: " + (Sb * 1.0 / (Sa + Sb)));
             return Sb * 1.0 / (Sa + Sb);
-        else if (team == TEAM_B)
+        } else if (team == TEAM_B) {
+            // System.out.println("Team B loss prob: " + (Sa * 1.0 / (Sa + Sb)));
             return Sa * 1.0 / (Sa + Sb);
-        else {
-            System.out.println("Error in probLoss: Please enter a valid int for team");
+        } else {
+            // System.out.println("Error in probLoss: Please enter a valid int for team");
             return -1;
         }
     }
 
+    // g function - should have negative slope
+    private double gfunct(double x) {
+        return 1 / (x + 1);
+        // return 6 - x;
+    }
+
     // calculates the probability of team captain of specified team doing the worst
     // in the individual challenge
-    private double probWorst(int team, int N, double m, int A, int B, int[] players) {
-        // calculate team strength
-        int teamStrength = sum(team, players);
-
+    // players is an array with 2 players left, p is the new player chosen
+    private double probWorst(int team, int N, int A, int B, int[] players, int p) {
         // calculate individual strength
         int indivStrength;
         if (team == TEAM_A)
@@ -434,17 +439,47 @@ public class Schoolyard {
             return -1;
         }
 
-        // calculate probability of losing challenge against teammates
-        return (N - m * indivStrength) / (N * N * 0.5 - m * teamStrength);
+        // get array of strengths for each player in the team
+        double[] teammates = new double[N / 2];
+        int j = 0;
+        for (int i = 0; i < players.length; i++) {
+            if (players[i] == team) {
+                teammates[j] = i;
+                j++;
+            }
+        }
+        teammates[j] = p;
+
+        double[] gindices = new double[N / 2];
+        // calculate g index for each player in the team
+        for (int i = 0; i < teammates.length; i++) {
+            gindices[i] = gfunct(teammates[i]);
+        }
+
+        double sum = 0.0;
+        // normalize; calculate probability of losing challenge against teammates
+        for (int i = 0; i < gindices.length; i++) {
+            sum += gindices[i];
+        }
+        /*
+         * System.out.print("Team strengths: "); for (int i = 0; i < teammates.length;
+         * i++) { System.out.print(teammates[i] + " "); }
+         * 
+         * System.out.println(); System.out.print("Team g indices: "); for (int i = 0; i
+         * < gindices.length; i++) { System.out.print(gindices[i] + " "); }
+         * System.out.println();
+         * 
+         * System.out.println("indiv prob, normalized: " + gfunct(indivStrength) / sum);
+         */
+
+        return gfunct(indivStrength) / sum;
+
     }
 
     // calculates the probability of team captain of specified team doing the worst
     // in the individual challenge
-    // sum = strength of team so far, p = strength of new player added to team
-    private double probWorst(int team, int N, double m, int A, int B, int sum, int p) {
-        // calculate team strength
-        int teamStrength = sum + p;
-
+    // players is a complete team roster
+    private double probWorst(int team, int N, int A, int B, int[] players) {
         // calculate individual strength
         int indivStrength;
         if (team == TEAM_A)
@@ -456,7 +491,42 @@ public class Schoolyard {
             return -1;
         }
 
-        // calculate probability of losing challenge against teammates
-        return (N - m * indivStrength) / (N * N * 0.5 - m * teamStrength);
+        // get array of strengths for each player in the team
+        double[] teammates = new double[N / 2];
+        int j = 0;
+        for (int i = 0; i < players.length; i++) {
+            if (players[i] == team) {
+                teammates[j] = i;
+                j++;
+            }
+        }
+
+        double[] gindices = new double[N / 2];
+
+        // calculate g index for each player in the team
+        for (int i = 0; i < teammates.length; i++) {
+            gindices[i] = gfunct(teammates[i]);
+        }
+
+        double sum = 0.0;
+        // normalize; calculate probability of losing challenge against teammates
+        for (int i = 0; i < gindices.length; i++) {
+            sum += gindices[i];
+        }
+
+        /*
+         * System.out.print("Team strengths: "); for (int i = 0; i < teammates.length;
+         * i++) { System.out.print(teammates[i] + " "); }
+         * 
+         * System.out.println(); System.out.print("Team g indices: "); for (int i = 0; i
+         * < gindices.length; i++) { System.out.print(gindices[i] + " "); }
+         * 
+         * System.out.println();
+         * 
+         * System.out.println("indiv prob, normalized: " + gfunct(indivStrength) / sum);
+         */
+
+        return gfunct(indivStrength) / sum;
     }
+
 }
